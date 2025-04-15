@@ -6,9 +6,11 @@ import Dependencies from '../views/Dependencies.vue'
 import Printers from '../views/Printers.vue'
 import Scanners from '../views/Scanners.vue'
 import store from '../store'
+import RegisterView from '../views/RegisterView.vue'
 
 const routes = [
   { path: '/', component: LoginView },
+  { path: '/register', component: RegisterView},
   {
     path: '/dashboard',
     component: DashboardLayout,
