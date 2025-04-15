@@ -257,10 +257,13 @@
     padding: 20px;
     max-width: 1200px;
     margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
   }
   
   h1 {
-    color: #333;
+    color: #3c3c3c;
     margin-bottom: 20px;
   }
   
@@ -271,37 +274,54 @@
   .btn {
     padding: 8px 16px;
     border: none;
-    border-radius: 4px;
+    border-radius: 6px;
     cursor: pointer;
     font-weight: bold;
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    transition: background-color 0.3s ease;
   }
   
   .btn-add {
-    background-color: #4CAF50;
-    color: white;
+    background-color: #C6D6A3;
+    color: #333;
+  }
+  
+  .btn-add:hover {
+    background-color: #B2C691;
   }
   
   .btn-edit {
-    background-color: #2196F3;
-    color: white;
+    background-color: #a1c2f0;
+    color: #fff;
+  }
+  
+  .btn-edit:hover {
+    background-color: #89b4eb;
   }
   
   .btn-delete {
-    background-color: #f44336;
+    background-color: #f28b82;
     color: white;
   }
   
+  .btn-delete:hover {
+    background-color: #e57373;
+  }
+  
   .btn-cancel {
-    background-color: #ccc;
+    background-color: #e0e0e0;
     color: #333;
   }
   
   .btn-submit {
-    background-color: #4CAF50;
+    background-color: #81c784;
     color: white;
+  }
+  
+  .btn-submit:hover {
+    background-color: #66bb6a;
   }
   
   .table-container {
@@ -312,6 +332,7 @@
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
+    background-color: #fff;
   }
   
   th, td {
@@ -321,16 +342,11 @@
   }
   
   th {
-    background-color: #f2f2f2;
+    background-color: #f9f9f9;
   }
   
   tr:hover {
     background-color: #f5f5f5;
-  }
-  
-  .actions button {
-    margin-right: 5px;
-    padding: 5px 10px;
   }
   
   .modal {
@@ -347,12 +363,13 @@
   }
   
   .modal-content {
-    background-color: white;
+    background-color: #fff;
     padding: 20px;
-    border-radius: 5px;
+    border-radius: 8px;
     width: 500px;
     max-width: 90%;
     position: relative;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
   }
   
   .close {
@@ -380,6 +397,7 @@
     padding: 8px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    background-color: #fff;
   }
   
   .form-actions {
@@ -393,8 +411,9 @@
     text-align: center;
     padding: 20px;
     background-color: #f9f9f9;
-    border-radius: 4px;
+    border-radius: 6px;
     margin-top: 20px;
+    color: #666;
   }
   
   .confirm-dialog {
@@ -413,7 +432,7 @@
   .confirm-content {
     background-color: white;
     padding: 20px;
-    border-radius: 5px;
+    border-radius: 8px;
     width: 400px;
     max-width: 90%;
   }
@@ -425,3 +444,4 @@
     margin-top: 20px;
   }
   </style>
+  
