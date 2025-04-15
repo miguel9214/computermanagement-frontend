@@ -83,15 +83,19 @@ const login = async () => {
 
 <style scoped>
 .login-container {
-  padding: 20px;
-  max-width: 450px; /* Ajusté el tamaño máximo */
-  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: #f4f4f4; /* Fondo gris claro */
 }
 
 .card {
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 450px; /* Ajusté el tamaño máximo */
 }
 
 .btn {
@@ -147,10 +151,6 @@ const login = async () => {
 }
 
 @media (max-width: 768px) {
-  .login-container {
-    padding: 15px;
-  }
-
   .card {
     padding: 20px;
   }
@@ -169,10 +169,6 @@ const login = async () => {
 }
 
 @media (max-width: 576px) {
-  .login-container {
-    padding: 10px;
-  }
-
   .card {
     padding: 15px;
   }
