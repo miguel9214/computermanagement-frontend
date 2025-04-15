@@ -1,256 +1,195 @@
 <template>
-    <div class="printer-management">
-      <h1>Gestión de Impresoras</h1>
-      
-      <!-- Modal para crear/editar impresora -->
-      <div v-if="showModal" class="modal">
-        <div class="modal-content">
-          <span class="close" @click="closeModal">&times;</span>
-          <h2>{{ isEditing ? 'Editar Impresora' : 'Nueva Impresora' }}</h2>
-          
-          <form @submit.prevent="submitForm">
-            <div class="form-group">
-              <label for="name">Nombre*</label>
-              <input 
-                type="text" 
-                id="name" 
-                v-model="formData.name" 
-                required
-                placeholder="Ej: Impresora Recepción"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="brand">Marca</label>
-              <input 
-                type="text" 
-                id="brand" 
-                v-model="formData.brand" 
-                placeholder="Ej: HP, Epson"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="model">Modelo</label>
-              <input 
-                type="text" 
-                id="model" 
-                v-model="formData.model" 
-                placeholder="Ej: LaserJet Pro M404"
-              >
-            </div>
-            
-            <div class="form-group">
-              <label for="connection">Tipo de Conexión*</label>
-              <select id="connection" v-model="formData.connection" required>
-                <option value="NONE">Seleccione...</option>
-                <option value="USB">USB</option>
-                <option value="IP">Red (IP)</option>
-              </select>
-            </div>
-            
-            <div v-if="formData.connection === 'IP'" class="form-group">
-              <label for="ip">Dirección IP</label>
-              <input 
-                type="text" 
-                id="ip" 
-                v-model="formData.ip" 
-                placeholder="Ej: 192.168.1.100"
-              >
-            </div>
-            
-            <div v-if="formData.connection === 'IP'" class="form-group">
-              <label for="mac">Dirección MAC</label>
-              <input 
-                type="text" 
-                id="mac" 
-                v-model="formData.mac" 
-                placeholder="Ej: 00:1A:2B:3C:4D:5E"
-              >
-            </div>
-            
-            <div class="form-actions">
-              <button type="button" @click="closeModal" class="btn btn-cancel">Cancelar</button>
-              <button type="submit" class="btn btn-submit">
-                {{ isEditing ? 'Actualizar' : 'Guardar' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-      
-      <!-- Botón para agregar nueva impresora -->
-      <div class="actions">
-        <button @click="openCreateModal" class="btn btn-add">
-          <i class="fas fa-plus"></i> Agregar Impresora
-        </button>
-      </div>
-      
-      <!-- Tabla de impresoras -->
-      <div class="table-container">
-        <table v-if="printers.length > 0">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Marca</th>
-              <th>Modelo</th>
-              <th>Conexión</th>
-              <th>IP</th>
-              <th>MAC</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="printer in printers" :key="printer.id">
-              <td>{{ printer.name }}</td>
-              <td>{{ printer.brand || '-' }}</td>
-              <td>{{ printer.model || '-' }}</td>
-              <td>{{ printer.connection }}</td>
-              <td>{{ printer.ip || '-' }}</td>
-              <td>{{ printer.mac || '-' }}</td>
-              <td class="actions">
-                <button @click="openEditModal(printer)" class="btn btn-edit">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button @click="confirmDelete(printer.id)" class="btn btn-delete">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div v-else class="no-data">
-          <p>No hay impresoras registradas</p>
-        </div>
-      </div>
-      
-      <!-- Confirmación de eliminación -->
-      <div v-if="showDeleteConfirm" class="confirm-dialog">
-        <div class="confirm-content">
-          <p>¿Estás seguro de que deseas eliminar esta impresora?</p>
-          <div class="confirm-actions">
-            <button @click="showDeleteConfirm = false" class="btn btn-cancel">Cancelar</button>
-            <button @click="deletePrinter" class="btn btn-delete">Eliminar</button>
+  <div class="printer-management">
+    <h1>Gestión de Impresoras</h1>
+
+    <!-- Modal para crear/editar impresora -->
+    <div v-if="showModal" class="modal">
+      <div class="modal-content">
+        <span class="close" @click="closeModal">&times;</span>
+        <h2>{{ isEditing ? 'Editar Impresora' : 'Nueva Impresora' }}</h2>
+
+        <form @submit.prevent="submitForm">
+          <div class="form-group">
+            <label for="name">Nombre*</label>
+            <input type="text" id="name" v-model="formData.name" required placeholder="Ej: Impresora HP LaserJet" />
           </div>
+
+          <div class="form-group">
+            <label for="brand">Marca</label>
+            <input type="text" id="brand" v-model="formData.brand" placeholder="Ej: HP, Epson" />
+          </div>
+
+          <div class="form-group">
+            <label for="model">Modelo</label>
+            <input type="text" id="model" v-model="formData.model" placeholder="Ej: LaserJet P1102" />
+          </div>
+
+          <div class="form-group">
+            <label for="connection_type">Tipo de Conexión*</label>
+            <select v-model="formData.connection_type" required>
+              <option disabled value="">Seleccione</option>
+              <option value="usb">USB</option>
+              <option value="network">Red (Network)</option>
+            </select>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" @click="closeModal" class="btn btn-cancel">Cancelar</button>
+            <button type="submit" class="btn btn-submit">
+              {{ isEditing ? 'Actualizar' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Botón para agregar nueva impresora -->
+    <div class="actions">
+      <button @click="openCreateModal" class="btn btn-add">
+        <i class="bi bi-plus"></i> Agregar Impresora
+      </button>
+    </div>
+
+    <!-- Tabla de impresoras -->
+    <div class="table-container">
+      <table v-if="printers.length > 0">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Nombre</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Conexión</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="printer in printers" :key="printer.id">
+            <td>{{ printer.id }}</td>
+            <td>{{ printer.name }}</td>
+            <td>{{ printer.brand || '-' }}</td>
+            <td>{{ printer.model || '-' }}</td>
+            <td>{{ printer.connection_type === 'usb' ? 'USB' : 'Red' }}</td>
+            <td class="actions">
+              <button @click="openEditModal(printer)" class="btn btn-edit">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button @click="confirmDelete(printer.id)" class="btn btn-delete">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div v-else class="no-data">
+        <p>No hay impresoras registradas</p>
+      </div>
+    </div>
+
+    <!-- Confirmación de eliminación -->
+    <div v-if="showDeleteConfirm" class="confirm-dialog">
+      <div class="confirm-content">
+        <p>¿Estás seguro de que deseas eliminar esta impresora?</p>
+        <div class="confirm-actions">
+          <button @click="showDeleteConfirm = false" class="btn btn-cancel">Cancelar</button>
+          <button @click="deletePrinter" class="btn btn-delete">Eliminar</button>
         </div>
       </div>
     </div>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted } from 'vue';
-  import { useApi } from '@/composables/use-api';
-  
-  // Estado de la vista
-  const printers = ref([]);
-  const showModal = ref(false);
-  const isEditing = ref(false);
-  const showDeleteConfirm = ref(false);
-  const printerToDelete = ref(null);
-  
-  // Datos del formulario
-  const formData = ref({
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue';
+import { useApi } from '@/composables/use-api';
+import Swal from 'sweetalert2';
+
+const printers = ref([]);
+const showModal = ref(false);
+const isEditing = ref(false);
+const showDeleteConfirm = ref(false);
+const printerToDelete = ref(null);
+
+const formData = ref({
+  name: '',
+  brand: '',
+  model: '',
+  connection_type: ''
+});
+
+onMounted(fetchPrinters);
+
+async function fetchPrinters() {
+  try {
+    printers.value = await useApi('printers');
+  } catch (error) {
+    console.error(error);
+    Swal.fire('Error', 'No se pudieron cargar las impresoras', 'error');
+  }
+}
+
+function openCreateModal() {
+  isEditing.value = false;
+  resetForm();
+  showModal.value = true;
+}
+
+function openEditModal(printer) {
+  isEditing.value = true;
+  formData.value = { ...printer };
+  showModal.value = true;
+}
+
+function closeModal() {
+  showModal.value = false;
+}
+
+function resetForm() {
+  formData.value = {
     name: '',
-    brand: null,
-    model: null,
-    connection: 'NONE',
-    ip: null,
-    mac: null
-  });
-  
-  // Cargar impresoras al montar el componente
-  onMounted(async () => {
+    brand: '',
+    model: '',
+    connection_type: ''
+  };
+}
+
+async function submitForm() {
+  try {
+    if (isEditing.value) {
+      await useApi(`printers/${formData.value.id}`, 'PUT', formData.value);
+      Swal.fire('Actualizado', 'La impresora fue actualizada exitosamente', 'success');
+    } else {
+      await useApi('printers', 'POST', formData.value);
+      Swal.fire('Guardado', 'La impresora fue creada exitosamente', 'success');
+    }
     await fetchPrinters();
-  });
-  
-  // Obtener lista de impresoras
-  async function fetchPrinters() {
-    try {
-      const data = await useApi('printers');
-      printers.value = data;
-    } catch (error) {
-      console.error('Error al obtener impresoras:', error);
-      alert('Error al cargar las impresoras');
-    }
+    closeModal();
+  } catch (error) {
+    const message = error?.response?.data?.message || 'Ocurrió un error al guardar';
+    const errors = error?.response?.data?.errors;
+    const detail = errors ? Object.values(errors).flat().join('\n') : '';
+    Swal.fire('Error', `${message}\n${detail}`, 'error');
   }
-  
-  // Abrir modal para crear nueva impresora
-  function openCreateModal() {
-    isEditing.value = false;
-    resetForm();
-    showModal.value = true;
+}
+
+function confirmDelete(id) {
+  printerToDelete.value = id;
+  showDeleteConfirm.value = true;
+}
+
+async function deletePrinter() {
+  try {
+    await useApi(`printers/${printerToDelete.value}`, 'DELETE');
+    Swal.fire('Eliminado', 'La impresora fue eliminada correctamente', 'success');
+    await fetchPrinters();
+    showDeleteConfirm.value = false;
+  } catch (error) {
+    console.error(error);
+    Swal.fire('Error', 'No se pudo eliminar la impresora', 'error');
   }
-  
-  // Abrir modal para editar impresora
-  function openEditModal(printer) {
-    isEditing.value = true;
-    formData.value = {
-      id: printer.id,
-      name: printer.name,
-      brand: printer.brand,
-      model: printer.model,
-      connection: printer.connection,
-      ip: printer.ip,
-      mac: printer.mac
-    };
-    showModal.value = true;
-  }
-  
-  // Cerrar modal
-  function closeModal() {
-    showModal.value = false;
-  }
-  
-  // Resetear formulario
-  function resetForm() {
-    formData.value = {
-      name: '',
-      brand: null,
-      model: null,
-      connection: 'NONE',
-      ip: null,
-      mac: null
-    };
-  }
-  
-  // Enviar formulario (crear/actualizar)
-  async function submitForm() {
-    try {
-      if (isEditing.value) {
-        // Actualizar impresora existente
-        await useApi(`printers/${formData.value.id}`, 'PUT', formData.value);
-      } else {
-        // Crear nueva impresora
-        await useApi('printers', 'POST', formData.value);
-      }
-      
-      await fetchPrinters();
-      closeModal();
-    } catch (error) {
-      console.error('Error al guardar impresora:', error);
-      alert('Error al guardar la impresora');
-    }
-  }
-  
-  // Confirmar eliminación
-  function confirmDelete(id) {
-    printerToDelete.value = id;
-    showDeleteConfirm.value = true;
-  }
-  
-  // Eliminar impresora
-  async function deletePrinter() {
-    try {
-      await useApi(`printers/${printerToDelete.value}`, 'DELETE');
-      await fetchPrinters();
-      showDeleteConfirm.value = false;
-    } catch (error) {
-      console.error('Error al eliminar impresora:', error);
-      alert('Error al eliminar la impresora');
-    }
-  }
-  </script>
+}
+</script>
   
   <style scoped>
   .printer-management {
