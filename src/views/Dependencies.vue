@@ -101,9 +101,9 @@ const fetchDependencies = async (page = 1, search = "") => {
     const response = await useApi(
       `dependencies?page=${page}&itemsPerPage=${itemsPerPage}&search=${search}`
     );
-    dependencies.value = response.data.data;
+   dependencies.value = response.data.data;
     currentPage.value = response.data.current_page;
-    totalPages.value = response.data.last_page;
+    totalPages.value = response.data.data.last_page;
   } catch (error) {
     console.error("Error al cargar las dependencias:", error);
   }
