@@ -2,60 +2,29 @@
   <div class="printer-management">
     <h1>Gestión de Impresoras</h1>
 
-    <!-- Modal para crear/editar impresora -->
-    <div v-if="showModal" class="modal">
-      <div class="modal-content">
-        <span class="close" @click="closeModal">&times;</span>
-        <h2>{{ isEditing ? 'Editar Impresora' : 'Nueva Impresora' }}</h2>
-
-        <form @submit.prevent="submitForm">
-          <div class="form-group">
-            <label for="name">Nombre*</label>
-            <input type="text" id="name" v-model="formData.name" required placeholder="Ej: Impresora HP LaserJet" />
-          </div>
-
-          <div class="form-group">
-            <label for="brand">Marca</label>
-            <input type="text" id="brand" v-model="formData.brand" placeholder="Ej: HP, Epson" />
-          </div>
-
-          <div class="form-group">
-            <label for="model">Modelo</label>
-            <input type="text" id="model" v-model="formData.model" placeholder="Ej: LaserJet P1102" />
-          </div>
-
-          <div class="form-group">
-            <label for="connection_type">Tipo de Conexión*</label>
-            <select v-model="formData.connection_type" required>
-              <option disabled value="">Seleccione</option>
-              <option value="usb">USB</option>
-              <option value="network">Red (Network)</option>
-            </select>
-          </div>
-
-          <div class="form-actions">
-            <button type="button" @click="closeModal" class="btn btn-cancel">Cancelar</button>
-            <button type="submit" class="btn btn-submit">
-              {{ isEditing ? 'Actualizar' : 'Guardar' }}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Botón para agregar nueva impresora -->
+    <!-- Filtro y acciones -->
     <div class="actions">
-      <button @click="openCreateModal" class="btn btn-add">
-        <i class="bi bi-plus"></i> Agregar Impresora
+      <input
+        v-model="searchQuery"
+        @keyup.enter="fetchPrinters(1)"
+        type="text"
+        class="form-control mb-2"
+        placeholder="Buscar por nombre, marca o modelo..."
+      />
+      <button class="btn btn-add" @click="openCreateModal">
+        <i class="bi bi-plus-circle"></i> Agregar Impresora
+      </button>
+      <button class="btn btn-edit" @click="fetchPrinters(currentPage)">
+        <i class="bi bi-arrow-repeat"></i> Recargar
       </button>
     </div>
 
-    <!-- Tabla de impresoras -->
+    <!-- Tabla -->
     <div class="table-container">
-      <table v-if="printers.length > 0">
+      <table>
         <thead>
           <tr>
-            <th>ID</th>
+            <th>#</th>
             <th>Nombre</th>
             <th>Marca</th>
             <th>Modelo</th>
@@ -64,323 +33,322 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="printer in printers" :key="printer.id">
-            <td>{{ printer.id }}</td>
+          <tr v-if="!printers.length">
+            <td colspan="6">No se encontraron impresoras.</td>
+          </tr>
+          <tr v-else v-for="(printer, idx) in printers" :key="printer.id">
+            <td>{{ (currentPage - 1) * perPage + idx + 1 }}</td>
             <td>{{ printer.name }}</td>
             <td>{{ printer.brand || '-' }}</td>
             <td>{{ printer.model || '-' }}</td>
-            <td>{{ printer.connection_type === 'usb' ? 'USB' : 'Red' }}</td>
-            <td class="actions">
-              <button @click="openEditModal(printer)" class="btn btn-edit">
+            <td>
+              <span v-if="printer.connection === 'USB'">USB</span>
+              <span v-else-if="printer.connection === 'IP'">IP</span>
+              <span v-else>-</span>
+            </td>
+            <td class="action-buttons">
+              <button class="btn btn-edit btn-sm" @click="openEditModal(printer)">
                 <i class="bi bi-pencil"></i>
               </button>
-              <button @click="confirmDelete(printer.id)" class="btn btn-delete">
+              <button class="btn btn-delete btn-sm" @click="confirmDelete(printer.id)">
                 <i class="bi bi-trash"></i>
               </button>
             </td>
           </tr>
         </tbody>
       </table>
-
-      <div v-else class="no-data">
-        <p>No hay impresoras registradas</p>
-      </div>
     </div>
 
-    <!-- Confirmación de eliminación -->
-    <div v-if="showDeleteConfirm" class="confirm-dialog">
-      <div class="confirm-content">
-        <p>¿Estás seguro de que deseas eliminar esta impresora?</p>
-        <div class="confirm-actions">
-          <button @click="showDeleteConfirm = false" class="btn btn-cancel">Cancelar</button>
-          <button @click="deletePrinter" class="btn btn-delete">Eliminar</button>
-        </div>
+    <!-- Paginación -->
+    <div class="pagination my-3 d-flex align-items-center justify-content-center">
+      <button
+        class="btn btn-secondary btn-sm"
+        :disabled="currentPage === 1"
+        @click="fetchPrinters(currentPage - 1)"
+      >
+        <i class="bi bi-arrow-left-circle"></i> Anterior
+      </button>
+      <span class="mx-2">Página {{ currentPage }} de {{ totalPages }}</span>
+      <button
+        class="btn btn-secondary btn-sm"
+        :disabled="currentPage === totalPages"
+        @click="fetchPrinters(currentPage + 1)"
+      >
+        Siguiente <i class="bi bi-arrow-right-circle"></i>
+      </button>
+    </div>
+
+    <!-- Modal Crear/Editar -->
+    <div class="modal" v-if="modalVisible">
+      <div class="modal-content">
+        <span class="close" @click="cancelForm">&times;</span>
+        <h3>{{ isEditing ? 'Editar Impresora' : 'Agregar Impresora' }}</h3>
+
+        <form @submit.prevent="submitForm">
+          <div class="form-row">
+            <div class="form-group col">
+              <label>Nombre*</label>
+              <input v-model="formData.name" type="text" required />
+            </div>
+            <div class="form-group col">
+              <label>Marca</label>
+              <input v-model="formData.brand" type="text" />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group col">
+              <label>Modelo</label>
+              <input v-model="formData.model" type="text" />
+            </div>
+            <div class="form-group col">
+              <label>Conexión*</label>
+              <select v-model="formData.connection" required>
+                <option value="" disabled>Seleccione</option>
+                <option value="USB">USB</option>
+                <option value="IP">IP</option>
+                <option value="NONE">Ninguna</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn btn-cancel" @click="cancelForm">
+              <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button type="submit" class="btn btn-submit">
+              <i class="bi bi-check-circle"></i>
+              {{ isEditing ? 'Actualizar' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useApi } from '@/composables/use-api';
-import Swal from 'sweetalert2';
+import { ref, onMounted, watch } from 'vue'
+import { useApi } from '@/composables/use-api'
+import Swal from 'sweetalert2'
 
-const printers = ref([]);
-const showModal = ref(false);
-const isEditing = ref(false);
-const showDeleteConfirm = ref(false);
-const printerToDelete = ref(null);
+const printers    = ref([])
+const searchQuery = ref('')
+const currentPage = ref(1)
+const totalPages  = ref(1)
+const perPage     = 10
 
-const formData = ref({
+const modalVisible = ref(false)
+const isEditing    = ref(false)
+const formData     = ref({
+  id: null,
   name: '',
   brand: '',
   model: '',
-  connection_type: ''
-});
+  connection: ''
+})
 
-onMounted(fetchPrinters);
-
-async function fetchPrinters() {
+async function fetchPrinters(page = 1) {
+  currentPage.value = page
   try {
-    printers.value = await useApi('printers');
-  } catch (error) {
-    console.error(error);
-    Swal.fire('Error', 'No se pudieron cargar las impresoras', 'error');
+    const resp = await useApi(`printers?page=${page}&per_page=${perPage}&search=${encodeURIComponent(searchQuery.value)}`)
+    const p = resp.data
+    printers.value   = p.data
+    totalPages.value = p.last_page
+  } catch (e) {
+    console.error(e)
+    Swal.fire('Error', 'No se pudo cargar las impresoras', 'error')
   }
 }
 
 function openCreateModal() {
-  isEditing.value = false;
-  resetForm();
-  showModal.value = true;
+  formData.value = { id: null, name: '', brand: '', model: '', connection: '' }
+  isEditing.value = false
+  modalVisible.value = true
 }
 
 function openEditModal(printer) {
-  isEditing.value = true;
-  formData.value = { ...printer };
-  showModal.value = true;
-}
-
-function closeModal() {
-  showModal.value = false;
-}
-
-function resetForm() {
-  formData.value = {
-    name: '',
-    brand: '',
-    model: '',
-    connection_type: ''
-  };
+  formData.value = { ...printer }
+  isEditing.value = true
+  modalVisible.value = true
 }
 
 async function submitForm() {
+  const url    = formData.value.id ? `printers/${formData.value.id}` : 'printers'
+  const method = formData.value.id ? 'PUT' : 'POST'
   try {
-    if (isEditing.value) {
-      await useApi(`printers/${formData.value.id}`, 'PUT', formData.value);
-      Swal.fire('Actualizado', 'La impresora fue actualizada exitosamente', 'success');
-    } else {
-      await useApi('printers', 'POST', formData.value);
-      Swal.fire('Guardado', 'La impresora fue creada exitosamente', 'success');
-    }
-    await fetchPrinters();
-    closeModal();
-  } catch (error) {
-    const message = error?.response?.data?.message || 'Ocurrió un error al guardar';
-    const errors = error?.response?.data?.errors;
-    const detail = errors ? Object.values(errors).flat().join('\n') : '';
-    Swal.fire('Error', `${message}\n${detail}`, 'error');
+    await useApi(url, method, formData.value)
+    Swal.fire('Éxito', `Impresora ${isEditing.value ? 'actualizada' : 'creada'} exitosamente`, 'success')
+    cancelForm()
+    fetchPrinters(currentPage.value)
+  } catch (err) {
+    console.error(err)
+    Swal.fire('Error', 'No se pudo guardar la impresora', 'error')
   }
 }
 
-function confirmDelete(id) {
-  printerToDelete.value = id;
-  showDeleteConfirm.value = true;
-}
-
-async function deletePrinter() {
+async function confirmDelete(id) {
+  const { isConfirmed } = await Swal.fire({
+    title: '¿Eliminar impresora?',
+    text: 'No podrás revertirlo',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar'
+  })
+  if (!isConfirmed) return
   try {
-    await useApi(`printers/${printerToDelete.value}`, 'DELETE');
-    Swal.fire('Eliminado', 'La impresora fue eliminada correctamente', 'success');
-    await fetchPrinters();
-    showDeleteConfirm.value = false;
-  } catch (error) {
-    console.error(error);
-    Swal.fire('Error', 'No se pudo eliminar la impresora', 'error');
+    await useApi(`printers/${id}`, 'DELETE')
+    Swal.fire('Eliminada', '', 'success')
+    fetchPrinters(currentPage.value)
+  } catch {
+    Swal.fire('Error', 'No se pudo eliminar la impresora', 'error')
   }
 }
+
+function cancelForm() {
+  modalVisible.value = false
+  isEditing.value    = false
+  formData.value     = { id: null, name: '', brand: '', model: '', connection: '' }
+}
+
+watch(searchQuery, () => fetchPrinters(1))
+onMounted(() => fetchPrinters(1))
 </script>
-  
-  <style scoped>
-  .printer-management {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-    background-color: #fff;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-  
-  h1 {
-    color: #3c3c3c;
-    margin-bottom: 20px;
-  }
-  
-  .actions {
-    margin-bottom: 20px;
-  }
-  
-  .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: background-color 0.3s ease;
-  }
-  
-  .btn-add {
-    background-color: #C6D6A3;
-    color: #333;
-  }
-  
-  .btn-add:hover {
-    background-color: #B2C691;
-  }
-  
-  .btn-edit {
-    background-color: #a1c2f0;
-    color: #fff;
-  }
-  
-  .btn-edit:hover {
-    background-color: #89b4eb;
-  }
-  
-  .btn-delete {
-    background-color: #f28b82;
-    color: white;
-  }
-  
-  .btn-delete:hover {
-    background-color: #e57373;
-  }
-  
-  .btn-cancel {
-    background-color: #e0e0e0;
-    color: #333;
-  }
-  
-  .btn-submit {
-    background-color: #81c784;
-    color: white;
-  }
-  
-  .btn-submit:hover {
-    background-color: #66bb6a;
-  }
-  
-  .table-container {
-    overflow-x: auto;
-  }
-  
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-    background-color: #fff;
-  }
-  
-  th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-  
-  th {
-    background-color: #f9f9f9;
-  }
-  
-  tr:hover {
-    background-color: #f5f5f5;
-  }
-  
-  .modal {
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .modal-content {
-    background-color: #fff;
-    padding: 20px;
-    border-radius: 8px;
-    width: 500px;
-    max-width: 90%;
-    position: relative;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-  }
-  
-  .close {
-    position: absolute;
-    right: 20px;
-    top: 10px;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-  }
-  
-  .form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-  }
-  
-  .form-group input,
-  .form-group select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    background-color: #fff;
-  }
-  
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  
-  .no-data {
-    text-align: center;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 6px;
-    margin-top: 20px;
-    color: #666;
-  }
-  
-  .confirm-dialog {
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .confirm-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 8px;
-    width: 400px;
-    max-width: 90%;
-  }
-  
-  .confirm-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  </style>
-  
+
+<style scoped>
+.printer-management {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+h1 {
+  color: #3c3c3c;
+  margin-bottom: 20px;
+}
+
+.actions {
+  margin-bottom: 20px;
+}
+
+.btn {
+  padding: 8px 16px;
+  margin: 0 4px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn i { margin-right: 4px; }
+
+.btn-add   { background: #C6D6A3; color: #333; }
+.btn-add:hover { background: #B2C691; }
+
+.btn-edit  { background: #a1c2f0; color: #fff; }
+.btn-edit:hover { background: #89b4eb; }
+
+.btn-delete { background: #f28b82; color: #fff; }
+.btn-delete:hover { background: #e57373; }
+
+.btn-cancel { background: #e0e0e0; color: #333; }
+.btn-submit { background: #81c784; color: #fff; }
+.btn-submit:hover { background: #66bb6a; }
+
+/* espacio entre los botones de acción en cada fila */
+.action-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 10px;
+  max-height: 300px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background: #f9f9f9;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+tr:hover {
+  background: #f5f5f5;
+}
+
+.pagination {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 500px;
+  max-width: 90%;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.form-row {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+</style>

@@ -1,427 +1,332 @@
 <template>
-    <div class="scanner-management">
-      <h1>Gestión de Scanners</h1>
-      
-      <!-- Modal para crear/editar scanner -->
-      <div v-if="showModal" class="modal">
-        <div class="modal-content">
-          <span class="close" @click="closeModal">&times;</span>
-          <h2>{{ isEditing ? 'Editar Scanner' : 'Nuevo Scanner' }}</h2>
-          
-          <form @submit.prevent="submitForm">
-            <div class="form-group">
-              <label for="name">Nombre*</label>
-              <input 
-                type="text" 
-                id="name" 
-                v-model="formData.name" 
-                required
-                placeholder="Ej: Scanner Recepción"
-              >
+  <div class="scanner-management">
+    <h1>Gestión de Escáneres</h1>
+
+    <!-- Filtro y acciones -->
+    <div class="actions">
+      <input
+        v-model="searchQuery"
+        @keyup.enter="fetchScanners(1)"
+        type="text"
+        class="form-control mb-2"
+        placeholder="Buscar por nombre..."
+      />
+      <button class="btn btn-add" @click="openCreateModal">
+        <i class="bi bi-plus-circle"></i> Agregar Escáner
+      </button>
+      <button class="btn btn-edit" @click="fetchScanners(currentPage)">
+        <i class="bi bi-arrow-repeat"></i> Recargar
+      </button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-container">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Marca</th>
+            <th>Modelo</th>
+            <th>Conexión</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-if="!scanners.length">
+            <td colspan="6">No se encontraron escáneres.</td>
+          </tr>
+          <tr v-else v-for="(scanner, idx) in scanners" :key="scanner.id">
+            <td>{{ (currentPage - 1) * perPage + idx + 1 }}</td>
+            <td>{{ scanner.name }}</td>
+            <td>{{ scanner.brand || '-' }}</td>
+            <td>{{ scanner.model || '-' }}</td>
+            <td>
+              <span v-if="scanner.connection === 'USB'">USB</span>
+              <span v-else-if="scanner.connection === 'IP'">IP</span>
+              <span v-else>Ninguna</span>
+            </td>
+            <td class="action-buttons">
+              <button class="btn btn-edit btn-sm" @click="openEditModal(scanner)">
+                <i class="bi bi-pencil"></i>
+              </button>
+              <button class="btn btn-delete btn-sm" @click="confirmDelete(scanner.id)">
+                <i class="bi bi-trash"></i>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Paginación -->
+    <div class="pagination my-3 d-flex align-items-center justify-content-center">
+      <button
+        class="btn btn-secondary btn-sm"
+        :disabled="currentPage === 1"
+        @click="fetchScanners(currentPage - 1)"
+      >
+        <i class="bi bi-arrow-left-circle"></i> Anterior
+      </button>
+      <span class="mx-2">Página {{ currentPage }} de {{ totalPages }}</span>
+      <button
+        class="btn btn-secondary btn-sm"
+        :disabled="currentPage === totalPages"
+        @click="fetchScanners(currentPage + 1)"
+      >
+        Siguiente <i class="bi bi-arrow-right-circle"></i>
+      </button>
+    </div>
+
+    <!-- Modal Crear/Editar -->
+    <div class="modal" v-if="modalVisible">
+      <div class="modal-content">
+        <span class="close" @click="cancelForm">&times;</span>
+        <h3>{{ isEditing ? 'Editar Escáner' : 'Agregar Escáner' }}</h3>
+        <form @submit.prevent="submitForm">
+          <div class="form-row">
+            <div class="form-group col">
+              <label>Nombre *</label>
+              <input v-model="formData.name" type="text" required />
             </div>
-            
-            <div class="form-group">
-              <label for="brand">Marca</label>
-              <input 
-                type="text" 
-                id="brand" 
-                v-model="formData.brand" 
-                placeholder="Ej: HP, Epson"
-              >
+            <div class="form-group col">
+              <label>Marca</label>
+              <input v-model="formData.brand" type="text" />
             </div>
-            
-            <div class="form-group">
-              <label for="model">Modelo</label>
-              <input 
-                type="text" 
-                id="model" 
-                v-model="formData.model" 
-                placeholder="Ej: ScanJet Pro 2500"
-              >
+          </div>
+          <div class="form-row">
+            <div class="form-group col">
+              <label>Modelo</label>
+              <input v-model="formData.model" type="text" />
             </div>
-            
-            <div class="form-group">
-              <label for="connection">Tipo de Conexión*</label>
-              <select id="connection" v-model="formData.connection" required>
-                <option value="NONE">Seleccione...</option>
+            <div class="form-group col">
+              <label>Conexión *</label>
+              <select v-model="formData.connection" required>
+                <option value="" disabled>Seleccione</option>
                 <option value="USB">USB</option>
-                <option value="IP">Red (IP)</option>
+                <option value="IP">IP</option>
+                <option value="NONE">Ninguna</option>
               </select>
             </div>
-            
-            <div v-if="formData.connection === 'IP'" class="form-group">
-              <label for="ip">Dirección IP</label>
-              <input 
-                type="text" 
-                id="ip" 
-                v-model="formData.ip" 
-                placeholder="Ej: 192.168.1.100"
-              >
-            </div>
-            
-            <div v-if="formData.connection === 'IP'" class="form-group">
-              <label for="mac">Dirección MAC</label>
-              <input 
-                type="text" 
-                id="mac" 
-                v-model="formData.mac" 
-                placeholder="Ej: 00:1A:2B:3C:4D:5E"
-              >
-            </div>
-            
-            <div class="form-actions">
-              <button type="button" @click="closeModal" class="btn btn-cancel">Cancelar</button>
-              <button type="submit" class="btn btn-submit">
-                {{ isEditing ? 'Actualizar' : 'Guardar' }}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-      
-      <!-- Botón para agregar nuevo scanner -->
-      <div class="actions">
-        <button @click="openCreateModal" class="btn btn-add">
-          <i class="fas fa-plus"></i> Agregar Scanner
-        </button>
-      </div>
-      
-      <!-- Tabla de scanners -->
-      <div class="table-container">
-        <table v-if="scanners.length > 0">
-          <thead>
-            <tr>
-              <th>Nombre</th>
-              <th>Marca</th>
-              <th>Modelo</th>
-              <th>Conexión</th>
-              <th>IP</th>
-              <th>MAC</th>
-              <th>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="scanner in scanners" :key="scanner.id">
-              <td>{{ scanner.name }}</td>
-              <td>{{ scanner.brand || '-' }}</td>
-              <td>{{ scanner.model || '-' }}</td>
-              <td>{{ scanner.connection }}</td>
-              <td>{{ scanner.ip || '-' }}</td>
-              <td>{{ scanner.mac || '-' }}</td>
-              <td class="actions">
-                <button @click="openEditModal(scanner)" class="btn btn-edit">
-                  <i class="fas fa-edit"></i>
-                </button>
-                <button @click="confirmDelete(scanner.id)" class="btn btn-delete">
-                  <i class="fas fa-trash"></i>
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-        
-        <div v-else class="no-data">
-          <p>No hay scanners registrados</p>
-        </div>
-      </div>
-      
-      <!-- Confirmación de eliminación -->
-      <div v-if="showDeleteConfirm" class="confirm-dialog">
-        <div class="confirm-content">
-          <p>¿Estás seguro de que deseas eliminar este scanner?</p>
-          <div class="confirm-actions">
-            <button @click="showDeleteConfirm = false" class="btn btn-cancel">Cancelar</button>
-            <button @click="deleteScanner" class="btn btn-delete">Eliminar</button>
           </div>
-        </div>
+          <div class="form-actions">
+            <button type="button" class="btn btn-cancel" @click="cancelForm">
+              <i class="bi bi-x-circle"></i> Cancelar
+            </button>
+            <button type="submit" class="btn btn-submit">
+              <i class="bi bi-check-circle"></i>
+              {{ isEditing ? 'Actualizar' : 'Guardar' }}
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  </template>
-  
-  <script setup>
-  import { ref, onMounted } from 'vue';
-  import { useApi } from '@/composables/use-api';
-  
-  // Estado de la vista
-  const scanners = ref([]);
-  const showModal = ref(false);
-  const isEditing = ref(false);
-  const showDeleteConfirm = ref(false);
-  const scannerToDelete = ref(null);
-  
-  // Datos del formulario
-  const formData = ref({
-    name: '',
-    brand: null,
-    model: null,
-    connection: 'NONE',
-    ip: null,
-    mac: null
-  });
-  
-  // Cargar scanners al montar el componente
-  onMounted(async () => {
-    await fetchScanners();
-  });
-  
-  // Obtener lista de scanners
-  async function fetchScanners() {
-    try {
-      const data = await useApi('scanners');
-      scanners.value = data;
-    } catch (error) {
-      console.error('Error al obtener scanners:', error);
-      alert('Error al cargar los scanners');
-    }
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted, watch } from 'vue'
+import { useApi } from '@/composables/use-api'
+import Swal from 'sweetalert2'
+
+const scanners    = ref([])
+const searchQuery = ref('')
+const currentPage = ref(1)
+const totalPages  = ref(1)
+const perPage     = 10
+
+const modalVisible = ref(false)
+const isEditing    = ref(false)
+const formData     = ref({ id: null, name: '', brand: '', model: '', connection: '' })
+
+async function fetchScanners(page = 1) {
+  currentPage.value = page
+  try {
+    const resp = await useApi(`scanners?page=${page}&per_page=${perPage}&search=${encodeURIComponent(searchQuery.value)}`)
+    const p     = resp.data
+    scanners.value   = p.data
+    totalPages.value = p.last_page
+  } catch (e) {
+    console.error(e)
+    Swal.fire('Error', 'No se pudo cargar los escáneres', 'error')
   }
-  
-  // Abrir modal para crear nuevo scanner
-  function openCreateModal() {
-    isEditing.value = false;
-    resetForm();
-    showModal.value = true;
+}
+
+function openCreateModal() {
+  formData.value = { id: null, name: '', brand: '', model: '', connection: '' }
+  isEditing.value = false
+  modalVisible.value = true
+}
+
+function openEditModal(scanner) {
+  formData.value = { ...scanner }
+  isEditing.value = true
+  modalVisible.value = true
+}
+
+async function submitForm() {
+  const url    = formData.value.id ? `scanners/${formData.value.id}` : 'scanners'
+  const method = formData.value.id ? 'PUT' : 'POST'
+  try {
+    await useApi(url, method, formData.value)
+    Swal.fire('Éxito', `Escáner ${isEditing.value ? 'actualizado' : 'creado'} exitosamente`, 'success')
+    cancelForm()
+    fetchScanners(currentPage.value)
+  } catch {
+    Swal.fire('Error', 'No se pudo guardar el escáner', 'error')
   }
-  
-  // Abrir modal para editar scanner
-  function openEditModal(scanner) {
-    isEditing.value = true;
-    formData.value = {
-      id: scanner.id,
-      name: scanner.name,
-      brand: scanner.brand,
-      model: scanner.model,
-      connection: scanner.connection,
-      ip: scanner.ip,
-      mac: scanner.mac
-    };
-    showModal.value = true;
+}
+
+async function confirmDelete(id) {
+  const { isConfirmed } = await Swal.fire({
+    title: '¿Eliminar escáner?',
+    text: 'No podrás revertirlo',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, eliminar'
+  })
+  if (!isConfirmed) return
+
+  try {
+    await useApi(`scanners/${id}`, 'DELETE')
+    Swal.fire('Eliminado', '', 'success')
+    fetchScanners(currentPage.value)
+  } catch {
+    Swal.fire('Error', 'No se pudo eliminar el escáner', 'error')
   }
-  
-  // Cerrar modal
-  function closeModal() {
-    showModal.value = false;
-  }
-  
-  // Resetear formulario
-  function resetForm() {
-    formData.value = {
-      name: '',
-      brand: null,
-      model: null,
-      connection: 'NONE',
-      ip: null,
-      mac: null
-    };
-  }
-  
-  // Enviar formulario (crear/actualizar)
-  async function submitForm() {
-    try {
-      if (isEditing.value) {
-        // Actualizar scanner existente
-        await useApi(`scanners/${formData.value.id}`, 'PUT', formData.value);
-      } else {
-        // Crear nuevo scanner
-        await useApi('scanners', 'POST', formData.value);
-      }
-      
-      await fetchScanners();
-      closeModal();
-    } catch (error) {
-      console.error('Error al guardar scanner:', error);
-      alert('Error al guardar el scanner');
-    }
-  }
-  
-  // Confirmar eliminación
-  function confirmDelete(id) {
-    scannerToDelete.value = id;
-    showDeleteConfirm.value = true;
-  }
-  
-  // Eliminar scanner
-  async function deleteScanner() {
-    try {
-      await useApi(`scanners/${scannerToDelete.value}`, 'DELETE');
-      await fetchScanners();
-      showDeleteConfirm.value = false;
-    } catch (error) {
-      console.error('Error al eliminar scanner:', error);
-      alert('Error al eliminar el scanner');
-    }
-  }
-  </script>
-  
-  <style scoped>
-  .scanner-management {
-    padding: 20px;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-  
-  h1 {
-    color: #333;
-    margin-bottom: 20px;
-  }
-  
-  .actions {
-    margin-bottom: 20px;
-  }
-  
-  .btn {
-    padding: 8px 16px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-weight: bold;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-  
-  .btn-add {
-    background-color: #4CAF50;
-    color: white;
-  }
-  
-  .btn-edit {
-    background-color: #2196F3;
-    color: white;
-  }
-  
-  .btn-delete {
-    background-color: #f44336;
-    color: white;
-  }
-  
-  .btn-cancel {
-    background-color: #ccc;
-    color: #333;
-  }
-  
-  .btn-submit {
-    background-color: #4CAF50;
-    color: white;
-  }
-  
-  .table-container {
-    overflow-x: auto;
-  }
-  
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 20px;
-  }
-  
-  th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-  }
-  
-  th {
-    background-color: #f2f2f2;
-  }
-  
-  tr:hover {
-    background-color: #f5f5f5;
-  }
-  
-  .actions button {
-    margin-right: 5px;
-    padding: 5px 10px;
-  }
-  
-  .modal {
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .modal-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 5px;
-    width: 500px;
-    max-width: 90%;
-    position: relative;
-  }
-  
-  .close {
-    position: absolute;
-    right: 20px;
-    top: 10px;
-    font-size: 28px;
-    font-weight: bold;
-    cursor: pointer;
-  }
-  
-  .form-group {
-    margin-bottom: 15px;
-  }
-  
-  .form-group label {
-    display: block;
-    margin-bottom: 5px;
-    font-weight: bold;
-  }
-  
-  .form-group input,
-  .form-group select {
-    width: 100%;
-    padding: 8px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-  }
-  
-  .form-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  
-  .no-data {
-    text-align: center;
-    padding: 20px;
-    background-color: #f9f9f9;
-    border-radius: 4px;
-    margin-top: 20px;
-  }
-  
-  .confirm-dialog {
-    position: fixed;
-    z-index: 1;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0,0,0,0.4);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  
-  .confirm-content {
-    background-color: white;
-    padding: 20px;
-    border-radius: 5px;
-    width: 400px;
-    max-width: 90%;
-  }
-  
-  .confirm-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-  }
-  </style>
+}
+
+function cancelForm() {
+  modalVisible.value = false
+  isEditing.value    = false
+  formData.value     = { id: null, name: '', brand: '', model: '', connection: '' }
+}
+
+watch(searchQuery, () => fetchScanners(1))
+onMounted(() => fetchScanners(1))
+</script>
+
+<style scoped>
+.scanner-management {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+h1 { color: #3c3c3c; margin-bottom: 20px; }
+
+.actions { margin-bottom: 20px; }
+
+.btn {
+  padding: 8px 16px;
+  margin: 0 4px;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn i { margin-right: 4px; }
+
+.btn-add   { background: #C6D6A3; color: #333; }
+.btn-add:hover { background: #B2C691; }
+
+.btn-edit  { background: #a1c2f0; color: #fff; }
+.btn-edit:hover { background: #89b4eb; }
+
+.btn-delete { background: #f28b82; color: #fff; }
+.btn-delete:hover { background: #e57373; }
+
+.btn-cancel { background: #e0e0e0; color: #333; }
+.btn-submit { background: #81c784; color: #fff; }
+.btn-submit:hover { background: #66bb6a; }
+
+.action-buttons { display: flex; gap: 8px; }
+
+.table-container {
+  overflow-x: auto;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  margin-top: 10px;
+  max-height: 300px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+th, td {
+  padding: 10px;
+  text-align: left;
+  border-bottom: 1px solid #ddd;
+}
+
+th {
+  background: #f9f9f9;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+tr:hover { background: #f5f5f5; }
+
+.pagination {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.modal-content {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  width: 500px;
+  max-width: 90%;
+  position: relative;
+}
+
+.close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.form-row { margin-bottom: 15px; }
+
+.form-group label {
+  font-weight: bold;
+  display: block;
+  margin-bottom: 5px;
+}
+
+input, select {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+</style>
