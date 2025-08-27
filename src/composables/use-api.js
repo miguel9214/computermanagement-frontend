@@ -1,48 +1,65 @@
-// src/composables/use-api.js
-
 import axios from 'axios';
 
-export const useApi = async function (url, method = 'GET', payload = {}) {
-    url = `http://computermanagement-backend.test/api/${url}`;
+const BASE = (
+  import.meta.env.VITE_API_URL // opcional: .env puede definirlo
+  || `http://${window.location.hostname}:8000` // usa el host actual (localhost o 192.168.2.93)
+) + '/api';
 
-    try {
-        const headers = {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-        };
+export const useApi = async function (url, method = 'GET', payload = undefined, extra = {}) {
+  const endpoint = `${BASE}/${String(url).replace(/^\/+/, '')}`;
 
-        const token = localStorage.getItem("access_token");
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
+  const headers = {
+    Accept: 'application/json',
+    ...(extra.headers || {}),
+  };
 
-        const config = {
-            method: method,
-            url: url,
-            data: payload,
-            headers: headers,
-        };
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
 
-        const response = await axios(config);
-        return response.data;
+  const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
+  if (!isFormData) {
+    headers['Content-Type'] = 'application/json';
+  } else {
+    // Deja que axios ponga boundary automáticamente
+    delete headers['Content-Type'];
+  }
 
-    } catch (error) {
-        if (error.response) {
-            const { status, data } = error.response;
+  const config = {
+    method,
+    url: endpoint,
+    headers,
+    withCredentials: false, // usas JWT por header
+  };
 
-            if (
-                status === 401 ||
-                (status === 500 && data.message === "Token has expired")
-            ) {
-                localStorage.removeItem("access_token"); // Elimina el token inválido
-                throw { status, data, redirect: true };   // Indicamos que redirija al login
-            } else {
-                throw data; // Otro error manejable en el frontend
-            }
-
-        } else {
-            console.error("Error en la API:", error);
-            throw new Error("Error en la conexión con el servidor.");
-        }
+  if (payload !== undefined) {
+    if (method.toUpperCase() === 'GET') {
+      config.params = payload; // GET -> querystring
+    } else {
+      config.data = isFormData ? payload : JSON.stringify(payload);
     }
+  }
+
+  try {
+    const response = await axios(config);
+    return response.data;
+  } catch (error) {
+    if (error.response) {
+      const { status, data } = error.response;
+
+      if (
+        status === 401 ||
+        (status === 500 && data?.message === 'Token has expired')
+      ) {
+        localStorage.removeItem('access_token');
+        throw { status, data, redirect: true };
+      } else {
+        throw data ?? { message: 'Error en la solicitud.' };
+      }
+    } else {
+      console.error('Error en la API:', error);
+      throw new Error('Error en la conexión con el servidor.');
+    }
+  }
 };
