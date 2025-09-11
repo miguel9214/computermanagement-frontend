@@ -1,9 +1,14 @@
 import axios from 'axios';
 
-const BASE = (
-  import.meta.env.VITE_API_URL // opcional: .env puede definirlo
-  || `http://${window.location.hostname}:8000` // usa el host actual (localhost o 192.168.2.93)
-) + '/api';
+// Si VITE_API_URL existe, se usa tal cual (no agregamos /api aquí).
+// Si no existe, se usa host:8000 + /api como fallback.
+const BASE = (() => {
+  const envBase = import.meta.env.VITE_API_URL?.trim();
+  if (envBase && envBase.length > 0) {
+    return envBase.replace(/\/+$/, ''); // quita slashes al final
+  }
+  return `http://${window.location.hostname}:8000/api`;
+})();
 
 export const useApi = async function (url, method = 'GET', payload = undefined, extra = {}) {
   const endpoint = `${BASE}/${String(url).replace(/^\/+/, '')}`;
@@ -14,15 +19,12 @@ export const useApi = async function (url, method = 'GET', payload = undefined, 
   };
 
   const token = localStorage.getItem('access_token');
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
+  if (token) headers.Authorization = `Bearer ${token}`;
 
   const isFormData = typeof FormData !== 'undefined' && payload instanceof FormData;
   if (!isFormData) {
     headers['Content-Type'] = 'application/json';
   } else {
-    // Deja que axios ponga boundary automáticamente
     delete headers['Content-Type'];
   }
 
@@ -30,36 +32,30 @@ export const useApi = async function (url, method = 'GET', payload = undefined, 
     method,
     url: endpoint,
     headers,
-    withCredentials: false, // usas JWT por header
+    withCredentials: false,
   };
 
   if (payload !== undefined) {
     if (method.toUpperCase() === 'GET') {
-      config.params = payload; // GET -> querystring
+      config.params = payload;
     } else {
       config.data = isFormData ? payload : JSON.stringify(payload);
     }
   }
 
   try {
-    const response = await axios(config);
-    return response.data;
+    const { data } = await axios(config);
+    return data;
   } catch (error) {
     if (error.response) {
       const { status, data } = error.response;
-
-      if (
-        status === 401 ||
-        (status === 500 && data?.message === 'Token has expired')
-      ) {
+      if (status === 401 || (status === 500 && data?.message === 'Token has expired')) {
         localStorage.removeItem('access_token');
         throw { status, data, redirect: true };
-      } else {
-        throw data ?? { message: 'Error en la solicitud.' };
       }
-    } else {
-      console.error('Error en la API:', error);
-      throw new Error('Error en la conexión con el servidor.');
+      throw data ?? { message: 'Error en la solicitud.' };
     }
+    console.error('Error en la API:', error);
+    throw new Error('Error en la conexión con el servidor.');
   }
 };
