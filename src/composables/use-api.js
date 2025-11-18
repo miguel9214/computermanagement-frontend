@@ -1,53 +1,79 @@
-// src/composables/use-api.js
+import axios from "axios";
 
-import axios from 'axios';
+const BASE = "https://p.gpsmonitoreorada.site/api"
 
-export const useApi = async function (url, method = 'GET', payload = {}) {
-    url = `http://computermanagement-backend.test/api/${url}`;
 
-    try {
-        const headers = {
-            'Accept': 'application/json',
-        };
+console.log("🌐 BASE API URL:", BASE);
 
-        // Si el payload es FormData, no establecemos Content-Type
-        // para que axios lo configure automáticamente con el boundary correcto
-        if (!(payload instanceof FormData)) {
-            headers['Content-Type'] = 'application/json';
-        }
+export const useApi = async function (
+  url,
+  method = "GET",
+  payload = undefined,
+  extra = {}
+) {
+  const endpoint = `${BASE}/${String(url).replace(/^\/+/, "")}`;
 
-        const token = localStorage.getItem("access_token");
-        if (token) {
-            headers.Authorization = `Bearer ${token}`;
-        }
+  const headers = {
+    Accept: "application/json",
+    ...(extra.headers || {}),
+  };
 
-        const config = {
-            method: method,
-            url: url,
-            data: payload,
-            headers: headers,
-        };
+  // ⏺ Recuperar token guardado en localStorage
+  const token = localStorage.getItem("access_token");
+  if (token) headers.Authorization = `Bearer ${token}`;
 
-        const response = await axios(config);
-        return response.data;
+  const isFormData =
+    typeof FormData !== "undefined" && payload instanceof FormData;
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  } else {
+    delete headers["Content-Type"];
+  }
 
-    } catch (error) {
-        if (error.response) {
-            const { status, data } = error.response;
+  const config = {
+    method,
+    url: endpoint,
+    headers,
+    withCredentials: false,
+  };
 
-            if (
-                status === 401 ||
-                (status === 500 && data.message === "Token has expired")
-            ) {
-                localStorage.removeItem("access_token"); // Elimina el token inválido
-                throw { status, data, redirect: true };   // Indicamos que redirija al login
-            } else {
-                throw data; // Otro error manejable en el frontend
-            }
-
-        } else {
-            console.error("Error en la API:", error);
-            throw new Error("Error en la conexión con el servidor.");
-        }
+  if (payload !== undefined) {
+    if (method.toUpperCase() === "GET") {
+      config.params = payload;
+    } else {
+      config.data = isFormData ? payload : JSON.stringify(payload);
     }
+  }
+
+  try {
+    const { data } = await axios(config);
+
+    // 🔐 Si la ruta es login o register y hay token => guardarlo
+    if (
+      (url.includes("login") || url.includes("register")) &&
+      data?.access_token
+    ) {
+      localStorage.setItem("access_token", data.access_token);
+    }
+
+    return data;
+  } catch (error) {
+    if (error.response) {
+      const { status, data } = error.response;
+
+      if (
+        status === 401 ||
+        (status === 500 && data?.message === "Token has expired")
+      ) {
+        // ⏺ Limpiamos token y forzamos redirect
+        localStorage.removeItem("access_token");
+        throw { status, data, redirect: true };
+      }
+
+      throw data ?? { message: "Error en la solicitud." };
+    }
+
+    console.error("Error en la API:", error);
+    throw new Error("Error en la conexión con el servidor.");
+  }
 };
