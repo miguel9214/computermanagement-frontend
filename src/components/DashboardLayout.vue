@@ -42,6 +42,16 @@
                 <i class="bi bi-upc-scan me-2"></i> Scanners
               </router-link>
             </li>
+            <li class="nav-item mb-2">
+              <router-link class="nav-link sidebar-link" to="/dashboard/maintenances">
+                <i class="bi bi-tools me-2"></i> Mantenimientos
+              </router-link>
+            </li>
+            <li class="nav-item mb-2">
+              <router-link class="nav-link sidebar-link" to="/dashboard/peripheral-changes">
+                <i class="bi bi-arrow-repeat me-2"></i> Cambios
+              </router-link>
+            </li>
           </ul>
         </nav>
       </aside>
@@ -103,7 +113,7 @@ const logout = () => {
 
 const isDashboardHome = computed(() => route.path === '/dashboard')
 
-const counts = reactive({ devices: 0, dependencies: 0, printers: 0, scanners: 0 })
+const counts = reactive({ devices: 0, dependencies: 0, printers: 0, scanners: 0, maintenances: 0, peripheralChanges: 0 })
 
 async function fetchCount(resource) {
   try {
@@ -115,17 +125,21 @@ async function fetchCount(resource) {
 }
 
 async function loadCounts() {
-  counts.devices      = await fetchCount('devices')
-  counts.dependencies = await fetchCount('dependencies')
-  counts.printers     = await fetchCount('printers')
-  counts.scanners     = await fetchCount('scanners')
+  counts.devices          = await fetchCount('devices')
+  counts.dependencies     = await fetchCount('dependencies')
+  counts.printers         = await fetchCount('printers')
+  counts.scanners         = await fetchCount('scanners')
+  counts.maintenances     = await fetchCount('maintenances')
+  counts.peripheralChanges = await fetchCount('peripheral-changes')
 }
 
 const cards = [
-  { title: 'Dispositivos',   icon: 'bi bi-hdd-stack', count: computed(() => counts.devices),      link: '/dashboard/devices' },
-  { title: 'Dependencias',    icon: 'bi bi-diagram-3',  count: computed(() => counts.dependencies), link: '/dashboard/dependencies' },
-  { title: 'Impresoras',      icon: 'bi bi-printer',    count: computed(() => counts.printers),     link: '/dashboard/printers' },
-  { title: 'Escáneres',       icon: 'bi bi-upc-scan',   count: computed(() => counts.scanners),     link: '/dashboard/scanners' },
+  { title: 'Dispositivos',   icon: 'bi bi-hdd-stack', count: computed(() => counts.devices),           link: '/dashboard/devices' },
+  { title: 'Dependencias',   icon: 'bi bi-diagram-3',  count: computed(() => counts.dependencies),      link: '/dashboard/dependencies' },
+  { title: 'Impresoras',     icon: 'bi bi-printer',    count: computed(() => counts.printers),          link: '/dashboard/printers' },
+  { title: 'Escáneres',      icon: 'bi bi-upc-scan',   count: computed(() => counts.scanners),          link: '/dashboard/scanners' },
+  { title: 'Mantenimientos', icon: 'bi bi-tools',      count: computed(() => counts.maintenances),      link: '/dashboard/maintenances' },
+  { title: 'Cambios',        icon: 'bi bi-arrow-repeat', count: computed(() => counts.peripheralChanges), link: '/dashboard/peripheral-changes' },
 ]
 
 onMounted(loadCounts)
@@ -213,6 +227,8 @@ onMounted(loadCounts)
 .dashboard-cards .card-dashboard:nth-child(2) { border-color: #a1c2f0; }
 .dashboard-cards .card-dashboard:nth-child(3) { border-color: #f28b82; }
 .dashboard-cards .card-dashboard:nth-child(4) { border-color: #81c784; }
+.dashboard-cards .card-dashboard:nth-child(5) { border-color: #ffd54f; }
+.dashboard-cards .card-dashboard:nth-child(6) { border-color: #ba68c8; }
 
 /* Icon circle */
 .icon-circle {
@@ -228,6 +244,8 @@ onMounted(loadCounts)
 .card-dashboard:nth-child(2) .icon-circle { background: rgba(161,194,240,0.2); }
 .card-dashboard:nth-child(3) .icon-circle { background: rgba(242,139,130,0.2); }
 .card-dashboard:nth-child(4) .icon-circle { background: rgba(129,199,132,0.2); }
+.card-dashboard:nth-child(5) .icon-circle { background: rgba(255,213,79,0.2); }
+.card-dashboard:nth-child(6) .icon-circle { background: rgba(186,104,200,0.2); }
 
 .card-icon {
   font-size: 1.75rem;
@@ -236,6 +254,8 @@ onMounted(loadCounts)
 .card-dashboard:nth-child(2) .card-icon { color: #a1c2f0; }
 .card-dashboard:nth-child(3) .card-icon { color: #f28b82; }
 .card-dashboard:nth-child(4) .card-icon { color: #81c784; }
+.card-dashboard:nth-child(5) .card-icon { color: #ffd54f; }
+.card-dashboard:nth-child(6) .card-icon { color: #ba68c8; }
 
 .card-title {
   font-size: 1rem;

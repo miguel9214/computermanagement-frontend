@@ -7,9 +7,14 @@ export const useApi = async function (url, method = 'GET', payload = {}) {
 
     try {
         const headers = {
-            'Content-Type': 'application/json',
             'Accept': 'application/json',
         };
+
+        // Si el payload es FormData, no establecemos Content-Type
+        // para que axios lo configure automáticamente con el boundary correcto
+        if (!(payload instanceof FormData)) {
+            headers['Content-Type'] = 'application/json';
+        }
 
         const token = localStorage.getItem("access_token");
         if (token) {
