@@ -1,0 +1,14 @@
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Esta línea es CLAVE: define tu carpeta base
+  RewriteBase /computermanager/
+  
+  RewriteRule ^index\.html$ - [L]
+  
+  # Si el archivo o carpeta solicitada NO existe...
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  
+  # ...redirige todo a index.html
+  RewriteRule . /computermanager/index.html [L]
+</IfModule>

@@ -1,7 +1,7 @@
 import axios from "axios";
 
-const BASE = "https://p.gpsmonitoreorada.site/api"
-
+// 🚀 Vite cargará automáticamente la URL del .env correspondiente
+const BASE = import.meta.env.VITE_API_URL;
 
 console.log("🌐 BASE API URL:", BASE);
 
@@ -11,23 +11,22 @@ export const useApi = async function (
   payload = undefined,
   extra = {}
 ) {
-  const endpoint = `${BASE}/${String(url).replace(/^\/+/, "")}`;
+  // Limpia posibles barras diagonales duplicadas
+  const cleanUrl = String(url).replace(/^\/+/, "");
+  const endpoint = `${BASE}/${cleanUrl}`;
 
   const headers = {
     Accept: "application/json",
     ...(extra.headers || {}),
   };
 
-  // ⏺ Recuperar token guardado en localStorage
   const token = localStorage.getItem("access_token");
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const isFormData =
-    typeof FormData !== "undefined" && payload instanceof FormData;
+  const isFormData = typeof FormData !== "undefined" && payload instanceof FormData;
+  
   if (!isFormData) {
     headers["Content-Type"] = "application/json";
-  } else {
-    delete headers["Content-Type"];
   }
 
   const config = {
@@ -48,11 +47,7 @@ export const useApi = async function (
   try {
     const { data } = await axios(config);
 
-    // 🔐 Si la ruta es login o register y hay token => guardarlo
-    if (
-      (url.includes("login") || url.includes("register")) &&
-      data?.access_token
-    ) {
+    if ((url.includes("login") || url.includes("register")) && data?.access_token) {
       localStorage.setItem("access_token", data.access_token);
     }
 
@@ -60,20 +55,12 @@ export const useApi = async function (
   } catch (error) {
     if (error.response) {
       const { status, data } = error.response;
-
-      if (
-        status === 401 ||
-        (status === 500 && data?.message === "Token has expired")
-      ) {
-        // ⏺ Limpiamos token y forzamos redirect
+      if (status === 401 || (status === 500 && data?.message === "Token has expired")) {
         localStorage.removeItem("access_token");
         throw { status, data, redirect: true };
       }
-
       throw data ?? { message: "Error en la solicitud." };
     }
-
-    console.error("Error en la API:", error);
     throw new Error("Error en la conexión con el servidor.");
   }
 };
